@@ -106,6 +106,43 @@ def test_rebuild_drops_existing_rows(tmp_path: Path) -> None:
     assert rows == []
 
 
+def test_build_populates_hashes_table_for_ntlm(tmp_path: Path) -> None:
+    db = tmp_path / "rainbow.duckdb"
+    report = build_rainbow(
+        layouts=[QWERTY_US],
+        lengths=range(4, 5),
+        algorithms=("ntlm", "lm"),
+        db_path=db,
+        rebuild=True,
+        max_turns=0,
+        max_segments=2,
+        long_seed_cap=8,
+    )
+    assert "ntlm" in report.algorithms_processed
+    assert "lm" in report.algorithms_processed
+    with closing(duckdb.connect(str(db), read_only=True)) as conn:
+        rows = conn.execute("SELECT COUNT(*) FROM hashes WHERE algorithm = 'ntlm';").fetchall()
+    assert rows
+    assert rows[0][0] == report.candidates_inserted
+
+
+def test_build_skips_uncomputable_algorithms(tmp_path: Path) -> None:
+    """bcrypt has no Python computer, so it is skipped at build time."""
+    db = tmp_path / "rainbow.duckdb"
+    report = build_rainbow(
+        layouts=[QWERTY_US],
+        lengths=range(4, 5),
+        algorithms=("ntlm", "bcrypt"),
+        db_path=db,
+        rebuild=True,
+        max_turns=0,
+        max_segments=2,
+        long_seed_cap=8,
+    )
+    assert "ntlm" in report.algorithms_processed
+    assert "bcrypt" not in report.algorithms_processed
+
+
 def test_lookup_hash_returns_none_when_unknown(tmp_path: Path) -> None:
     db = tmp_path / "rainbow.duckdb"
     build_rainbow(

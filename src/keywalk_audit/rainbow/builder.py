@@ -21,6 +21,8 @@ import duckdb
 
 from keywalk_audit.fuzzy.geometric_minhash import GeometricMinHashIndex
 from keywalk_audit.fuzzy.string_minhash import StringMinHashIndex
+from keywalk_audit.hashing.algorithms import HASHCAT_MODES
+from keywalk_audit.hashing.computer import can_compute, compute_hash
 from keywalk_audit.rainbow.schema import drop_schema, init_schema, walk_id_for
 from keywalk_audit.walks.fingerprint import geometric_fingerprint
 from keywalk_audit.walks.generator import generate_walks_long, generate_walks_short
@@ -196,15 +198,23 @@ def build_rainbow(
 ) -> RainbowBuildReport:
     """Build (or rebuild) the rainbow table at `db_path`.
 
-    Hashcat orchestration is wired in Phase 4. For Phase 3 the
-    ``algorithms``, ``fast_only``, ``hashcat_binary``, and
-    ``run_hashcat`` parameters are accepted for API stability but the
-    ``hashes`` table is left empty.
+    Hash computation for fast, hashcat-aligned algorithms (NTLM, LM, raw
+    MD5/SHA1/SHA256/SHA512) runs in pure Python at build time so that
+    audit-time exact lookups are immediate. Slow algorithms (bcrypt,
+    scrypt, crypt-family) are not materialized in the rainbow table; for
+    those, audit-time hashcat invocations against the candidate wordlist
+    do the cracking.
+
+    The ``run_hashcat`` and ``hashcat_binary`` parameters are accepted for
+    API stability and are unused at build time. They are consumed by the
+    audit runner when cracking unknown captured hashes.
     """
-    _ = workers, hashcat_binary, run_hashcat, fast_only, algorithms
+    _ = workers, hashcat_binary, run_hashcat
     start = time.time()
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    requested_algos = _select_algorithms(algorithms, fast_only=fast_only)
 
     geom_idx = GeometricMinHashIndex(num_perm=num_perm, threshold=geom_threshold)
     string_idx = StringMinHashIndex(num_perm=num_perm, threshold=string_threshold)
@@ -223,6 +233,7 @@ def build_rainbow(
             logger.info("building rainbow for layout %s", layout.name)
             row_buffer: list[_CandidateRow] = []
             sig_buffer: list[tuple[str, bytes, bytes]] = []
+            hash_buffer: list[tuple[str, str, str]] = []
             try:
                 for row in _stream_candidates(
                     layout=layout,
@@ -244,13 +255,18 @@ def build_rainbow(
                     )
                     row_buffer.append(row)
                     sig_buffer.append((row.walk_id, geom_sig, str_sig))
+                    for algo in requested_algos:
+                        hash_buffer.append((row.walk_id, algo, compute_hash(algo, row.plaintext)))
                     if len(row_buffer) >= BATCH_SIZE:
                         _flush_candidates(conn, row_buffer, sig_buffer)
+                        _flush_hashes(conn, hash_buffer)
                         candidates_inserted += len(row_buffer)
                         row_buffer.clear()
                         sig_buffer.clear()
+                        hash_buffer.clear()
                 if row_buffer:
                     _flush_candidates(conn, row_buffer, sig_buffer)
+                    _flush_hashes(conn, hash_buffer)
                     candidates_inserted += len(row_buffer)
                 layouts_done.append(layout.name)
             except duckdb.Error as exc:
@@ -265,8 +281,50 @@ def build_rainbow(
         candidates_inserted=candidates_inserted,
         fingerprints_unique=len(fingerprints),
         layouts_processed=tuple(layouts_done),
-        algorithms_processed=(),
+        algorithms_processed=tuple(requested_algos),
         hashcat_runs=0,
         runtime_seconds=runtime,
         errors=tuple(errors),
+    )
+
+
+def _select_algorithms(algorithms: Sequence[str], *, fast_only: bool) -> list[str]:
+    """Return the requested algorithms restricted to ones we can compute.
+
+    Unknown algorithms are silently skipped with a warning. Slow algorithms
+    are skipped when ``fast_only`` is True.
+    """
+    selected: list[str] = []
+    for name in algorithms:
+        algo = HASHCAT_MODES.get(name)
+        if algo is None:
+            logger.warning("unknown algorithm %r; skipping", name)
+            continue
+        if fast_only and not algo.is_fast:
+            logger.info("fast_only set; skipping slow algorithm %s", name)
+            continue
+        if not can_compute(name):
+            logger.info(
+                "skipping %s at build time; no Python computer "
+                "(audit-time hashcat handles this algorithm)",
+                name,
+            )
+            continue
+        selected.append(name)
+    return selected
+
+
+def _flush_hashes(
+    conn: duckdb.DuckDBPyConnection,
+    rows: list[tuple[str, str, str]],
+) -> None:
+    if not rows:
+        return
+    conn.executemany(
+        """
+        INSERT INTO hashes (walk_id, algorithm, hash_value)
+        VALUES (?, ?, ?)
+        ON CONFLICT (walk_id, algorithm) DO NOTHING;
+        """,
+        rows,
     )
