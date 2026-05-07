@@ -1,0 +1,157 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keywalk-audit"
+version = "0.1.0"
+description = "Keyboard-walk password audit tool with rainbow tables, fuzzy hashing, and hashcat orchestration."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "keywalk-audit contributors" }]
+keywords = ["password", "audit", "keyboard-walk", "hashcat", "rainbow-table", "minhash"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+dependencies = [
+    "click>=8.1",
+    "datasketch>=1.6",
+    "duckdb>=1.0",
+    "openpyxl>=3.1",
+    "impacket>=0.11",
+    "pyarrow>=15.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "types-openpyxl",
+]
+
+[project.scripts]
+keywalk-audit = "keywalk_audit.cli:main"
+
+[project.urls]
+Repository = "https://github.com/researchthings/kristokeyboardwalkin"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"keywalk_audit" = ["py.typed"]
+"keywalk_audit._stubs" = ["**/*.pyi"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["src/keywalk_audit/_stubs"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "B",
+    "UP",
+    "N",
+    "SIM",
+    "RUF",
+    "PL",
+    "PT",
+    "C4",
+    "ANN",
+    "ARG",
+    "RET",
+    "TCH",
+    "PTH",
+]
+ignore = [
+    "PLR0913",
+    "PLR2004",
+    "ANN401",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "PLR2004", "PLR0915", "N802"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+files = ["src", "tests"]
+mypy_path = "src/keywalk_audit/_stubs"
+
+[[tool.mypy.overrides]]
+module = ["datasketch", "datasketch.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["openpyxl", "openpyxl.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["duckdb", "duckdb.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["impacket", "impacket.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "integration: tests that require external binaries (e.g., hashcat) on PATH",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["keywalk_audit"]
+omit = ["src/keywalk_audit/_stubs/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+show_missing = true
+skip_covered = false

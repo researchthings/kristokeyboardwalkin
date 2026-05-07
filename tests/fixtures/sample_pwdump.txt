@@ -1,0 +1,27 @@
+# Synthetic PWDUMP fixture for keywalk_audit tests.
+# Format: username:rid:lm_hash:nt_hash:::
+# 10 walk-password accounts followed by 10 random-password accounts.
+# Walk passwords (in order):
+#   1qazxsw2!QAZXSW@, 1qaz2wsx!QAZ@WSX, zaq12wsxZAQ!@WSX, zaq1xsw2ZAQ!XSW@,
+#   1qaz2wsx3edc4rfv, 4rfv3edc2wsx1qaz, 1qazxcde3!QAZXCDE#, 3edcxzaq1#EDCXZAQ!,
+#   qwertyui, 1qaz2wsx
+walker01:1001:089238590968dc7b130dfc534e51113e:d030916f5b1a9a7a9b719ac09171fcfb:::
+walker02:1002:77110412e3544d2ff9a4905024491dcd:31592a42841d0a9e74f93c41d8884cd0:::
+walker03:1003:e600b390ba9e4e2ea1bb4719960f5054:bfd713ba2d67c8d19ca6d369efe8ed02:::
+walker04:1004:8ed4024789531535bbde0e732003e4eb:f10be05ca2205d560e33ecd88c95c29a:::
+walker05:1005:77110412e3544d2f59bda262dc14eb29:e1ae870436d7ece5d85c2a3ed964bb57:::
+walker06:1006:a78c77cf046574267ed64636399780ae:f1ecf1e5a4448124ded880070a63d614:::
+walker07:1007:d02c51dbcc6e00b47ad87e308e95906b:d0f4f0160b081e9665572eb1098b6819:::
+walker08:1008:143779e30c3a099905e16dd749e931c2:fd2d3584164c51c812b0da09c1d2cd94:::
+walker09:1009:6d9df16655336ca7f7e62f36f8db5ae6:528bc44db20df13a5b8de27a8407de9f:::
+walker10:1010:77110412e3544d2fc187b8085fe1d9df:f67f5e3f66efd7298be6acd32eeeb27c:::
+random01:2001:aad3b435b51404eeaad3b435b51404ee:0000aaaa1111bbbb2222cccc3333dddd:::
+random02:2002:aad3b435b51404eeaad3b435b51404ee:eeeeffff0011223344556677889900aa:::
+random03:2003:aad3b435b51404eeaad3b435b51404ee:bbccddeeffaa00112233445566778899:::
+random04:2004:aad3b435b51404eeaad3b435b51404ee:0123456789abcdef0123456789abcdef:::
+random05:2005:aad3b435b51404eeaad3b435b51404ee:fedcba9876543210fedcba9876543210:::
+random06:2006:aad3b435b51404eeaad3b435b51404ee:cafebabecafebabecafebabecafebabe:::
+random07:2007:aad3b435b51404eeaad3b435b51404ee:deadbeefdeadbeefdeadbeefdeadbeef:::
+random08:2008:aad3b435b51404eeaad3b435b51404ee:1357924680135792468013579246801f:::
+random09:2009:aad3b435b51404eeaad3b435b51404ee:abad1deaabad1deaabad1deaabad1dea:::
+random10:2010:aad3b435b51404eeaad3b435b51404ee:5151515151515151515151515151515f:::
