@@ -17,4 +17,6 @@ QWERTY_INTL: Layout = Layout(
     name="qwerty_intl",
     char_to_pos=MappingProxyType(dict(QWERTY_US.char_to_pos)),
     shift_map=MappingProxyType(dict(QWERTY_US.shift_map)),
+    row_offsets=MappingProxyType(dict(QWERTY_US.row_offsets)),
+    finger_map=MappingProxyType(dict(QWERTY_US.finger_map)),
 )

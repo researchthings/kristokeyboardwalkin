@@ -123,7 +123,7 @@ def test_get_layout_returns_known(qwerty_us: Layout) -> None:
 
 def test_get_layout_unknown_raises() -> None:
     with pytest.raises(KeyError):
-        get_layout("dvorak")
+        get_layout("klingon")
 
 
 def test_position_unknown_char_raises(qwerty_us: Layout) -> None:
@@ -132,4 +132,14 @@ def test_position_unknown_char_raises(qwerty_us: Layout) -> None:
 
 
 def test_layouts_registry_complete() -> None:
-    assert set(LAYOUTS.keys()) == {"qwerty_us", "qwerty_uk", "qwerty_intl", "numpad"}
+    assert set(LAYOUTS.keys()) == {
+        "qwerty_us",
+        "qwerty_uk",
+        "qwerty_intl",
+        "qwertz_de",
+        "azerty_fr",
+        "dvorak",
+        "colemak",
+        "numpad",
+        "phone_keypad",
+    }

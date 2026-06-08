@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "keywalk-audit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Keyboard-walk password audit tool with rainbow tables, fuzzy hashing, and hashcat orchestration."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -90,6 +90,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN", "PLR2004", "PLR0915", "N802"]
+# Keyboard layouts legitimately contain glyphs that the confusable-unicode
+# lints flag (e.g. the AZERTY/QWERTZ keycaps é ç ü ö ´). These are real key
+# labels, not typos, so the ambiguity rules are disabled for these files only.
+"src/keywalk_audit/layouts/azerty_fr.py" = ["RUF001", "RUF002", "RUF003"]
+"src/keywalk_audit/layouts/qwertz_de.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 quote-style = "double"

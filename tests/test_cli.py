@@ -56,7 +56,7 @@ def test_cli_fingerprint_shift_mirror_match() -> None:
 
 def test_cli_score_unknown_layout_errors() -> None:
     runner = CliRunner()
-    result = runner.invoke(main, ["score", "1qaz", "--layout", "dvorak"])
+    result = runner.invoke(main, ["score", "1qaz", "--layout", "klingon"])
     assert result.exit_code != 0
 
 
