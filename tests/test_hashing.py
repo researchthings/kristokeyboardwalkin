@@ -25,10 +25,13 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-def test_registry_has_28_algorithms() -> None:
-    """The 28 entries match the spec's table verbatim. (Cisco type 5 is
-    intentionally omitted because it reuses md5crypt mode 500.)"""
-    assert len(HASHCAT_MODES) == 28
+def test_registry_has_expected_algorithms() -> None:
+    """The original 28 spec entries plus five extra computable generic raw
+    modes (SHA-224/384, SHA3-256/512, BLAKE2b) added in v0.2. Cisco type 5 is
+    intentionally omitted because it reuses md5crypt mode 500."""
+    assert len(HASHCAT_MODES) == 33
+    for name in ("ntlm", "lm", "bcrypt", "raw_md4", "raw_sha3_256", "raw_blake2b"):
+        assert name in HASHCAT_MODES
 
 
 def test_registry_all_have_unique_names() -> None:
@@ -69,9 +72,27 @@ def test_compute_raw_sha256() -> None:
     assert compute_hash("raw_sha256", "") == expected
 
 
+def test_compute_raw_md4_known_value() -> None:
+    # RFC 1320 vectors; also the empty NT hash equals MD4 of empty input.
+    assert compute_hash("raw_md4", "") == "31d6cfe0d16ae931b73c59d7e0c089c0"
+    assert compute_hash("raw_md4", "abc") == "a448017aaf21d8525fc10ae87aa6729d"
+
+
+def test_compute_raw_sha224_known_value() -> None:
+    expected = "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f"
+    assert compute_hash("raw_sha224", "") == expected
+
+
+def test_compute_raw_sha3_256_known_value() -> None:
+    expected = "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"
+    assert compute_hash("raw_sha3_256", "") == expected
+
+
 def test_can_compute_known_unknown() -> None:
     assert can_compute("ntlm") is True
     assert can_compute("bcrypt") is False
+    assert can_compute("raw_md4") is True
+    assert can_compute("raw_blake2b") is True
 
 
 def test_compute_unknown_raises() -> None:

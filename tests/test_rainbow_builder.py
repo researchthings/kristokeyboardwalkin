@@ -82,6 +82,27 @@ def test_build_includes_canonical_long_walk_via_composition(tmp_path: Path) -> N
     assert rows[0][0] > 0
 
 
+def test_build_with_patterns_includes_famous_walk(tmp_path: Path) -> None:
+    """With ``include_patterns`` the famous walk ``qwerty`` is materialized."""
+    db = tmp_path / "rainbow.duckdb"
+    build_rainbow(
+        layouts=[QWERTY_US],
+        lengths=range(6, 7),
+        db_path=db,
+        rebuild=True,
+        max_turns=0,
+        max_segments=2,
+        long_seed_cap=8,
+        include_patterns=True,
+    )
+    with closing(duckdb.connect(str(db), read_only=True)) as conn:
+        rows = conn.execute(
+            "SELECT COUNT(*) FROM candidates WHERE plaintext = 'qwerty';"
+        ).fetchall()
+    assert rows
+    assert rows[0][0] == 1
+
+
 def test_rebuild_drops_existing_rows(tmp_path: Path) -> None:
     db = tmp_path / "rainbow.duckdb"
     with closing(duckdb.connect(str(db))) as conn:

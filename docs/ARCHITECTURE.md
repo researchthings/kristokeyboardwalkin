@@ -8,11 +8,14 @@ against the rainbow.
 
 ## Modules
 
-- `keywalk_audit.layouts` defines the `Layout` dataclass and four
-  concrete layouts (`qwerty_us`, `qwerty_uk`, `qwerty_intl`, `numpad`).
-  Each layout maps characters to a `(row, col)` grid where columns align
-  across rows so vertical walks (e.g. `1qaz`) score correctly.
-- `keywalk_audit.walks` contains four submodules:
+- `keywalk_audit.layouts` defines the `Layout` dataclass and nine
+  concrete layouts (`qwerty_us`, `qwerty_uk`, `qwerty_intl`, `qwertz_de`,
+  `azerty_fr`, `dvorak`, `colemak`, `numpad`, `phone_keypad`). Each maps
+  characters to a `(row, col)` grid where columns align across rows so
+  vertical walks (e.g. `1qaz`) score correctly. Layouts optionally carry a
+  physical row-stagger model and a touch-typing finger map; see
+  `LAYOUTS.md`.
+- `keywalk_audit.walks` contains:
   - `variants.py` derives the shift mirror, character reversal, and the
     full variant set of a plaintext.
   - `scorer.py` computes the six-feature walk score with calibrated
@@ -23,25 +26,36 @@ against the rainbow.
     fingerprint.
   - `generator.py` provides a streaming DFS short-walk generator and a
     long-walk composer that concatenates 2..max_segments shorts.
+  - `patterns.py` adds structural generators (famous walks, row/column
+    sweeps, zig-zags, doublings, opt-in knight moves); see `PATTERNS.md`.
+  - `analysis.py` adds descriptive metrics (physical travel, hand/finger
+    dynamics, repeats, layout identification, walk guessability) on top of
+    the calibrated score; see `ANALYSIS.md`.
 - `keywalk_audit.fuzzy` exposes two MinHash LSH indexes: a geometric
   index over direction-vector shingles and a string index over plaintext
   character n-grams. Both index at a permissive LSH threshold (0.4) and
   re-rank candidates with exact MinHash Jaccard so the configured
   threshold is honoured despite the LSH banding approximation.
 - `keywalk_audit.hashing` registers hashcat algorithm modes, computes
-  fast hashes in pure Python at build time, and orchestrates hashcat as
-  a subprocess for audit-time cracking.
+  fast hashes in pure Python at build time (including a from-scratch MD4
+  in `md4.py`), orchestrates hashcat as a subprocess, generates
+  walk-aware mutation rules and masks (`mutations.py`), and decodes Cisco
+  Type-7 strings (`cisco_type7.py`).
 - `keywalk_audit.sam` parses PWDUMP files, wraps impacket's
   `LocalOperations` and `SAMHashes` for raw SAM/SYSTEM hives, and
   autodetects format via the ``regf`` magic bytes.
 - `keywalk_audit.rainbow` defines the DuckDB schema, the streaming
   builder, and the lookup helpers. The builder generates short walks,
-  emits each variant, composes long walks from a capped seed set,
-  computes hashes, and batch-inserts every 1000 rows into DuckDB.
+  emits each variant, optionally folds in structural patterns, composes
+  long walks from a capped seed set, computes hashes, and batch-inserts
+  every 1000 rows into DuckDB.
 - `keywalk_audit.audit` runs the pipeline end to end: parse SAM, look
   up each entry's NT and LM hashes against the rainbow, decorate
-  matched candidates with fuzzy clusters, and produce JSON or XLSX
-  reports.
+  matched candidates with fuzzy clusters, and produce reports in JSON,
+  XLSX, CSV, HTML, Markdown, SARIF, or console form (`reporters.py`,
+  `REPORTING.md`). `crack.py` orchestrates audit-time hashcat cracking of
+  unmatched hashes, seeded by the rainbow candidates and the mutation
+  engine (`MUTATIONS.md`).
 
 ## Data flow
 

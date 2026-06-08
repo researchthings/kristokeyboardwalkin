@@ -1,11 +1,21 @@
 # keywalk_audit
 
-Keyboard-walk password audit tool. Detects "walking" patterns in passwords
-across QWERTY US, QWERTY UK, QWERTY US-International, and numeric-keypad
-layouts; builds a persistent rainbow table of walk candidates with their
-hashes; audits SAM dumps (PWDUMP or raw hive) for accounts using walk
-passwords; and clusters walk variants and near-miss mutations via geometric
-and string MinHash locality-sensitive hashing.
+Keyboard-walk password audit tool. It detects "walking" patterns in
+passwords across nine layouts — QWERTY US / UK / US-International, German
+QWERTZ, French AZERTY, Dvorak, Colemak, the numeric keypad, and the
+telephone keypad — scoring each candidate, fingerprinting its physical
+path, and clustering variants and near-miss mutations via geometric and
+string MinHash locality-sensitive hashing. It builds a persistent rainbow
+table of walk candidates with their hashes (optionally seeded with
+structural patterns: famous walks, sweeps, zig-zags, and doublings), audits
+SAM dumps (PWDUMP or raw hive) for accounts using walk passwords, and can
+hand unmatched hashes to hashcat with a walk-aware mutation rule set.
+
+Additional tooling: deep per-candidate analysis (physical travel,
+hand/finger dynamics, repeats, automatic layout identification, walk
+guessability); a from-scratch MD4 plus ten generic raw hash modes that
+build in pure Python; a Cisco IOS Type-7 decoder; and audit reports in
+JSON, XLSX, CSV, HTML, Markdown, SARIF, or console form.
 
 License: MIT.
 
@@ -33,6 +43,25 @@ Compute its geometric fingerprint:
 keywalk-audit fingerprint "1qazxsw2"
 ```
 
+Run the deep analysis and let the tool pick the layout:
+
+```
+keywalk-audit analyze "azerty123" --auto
+```
+
+List the layouts and the hash-algorithm registry:
+
+```
+keywalk-audit layouts
+keywalk-audit algorithms
+```
+
+Decode a Cisco IOS Type-7 password:
+
+```
+keywalk-audit decode-cisco7 02050D480809
+```
+
 Build a small rainbow table:
 
 ```
@@ -42,8 +71,13 @@ keywalk-audit build-rainbow \
     --lengths 4-12 \
     --algorithms ntlm,lm \
     --max-turns 2 \
+    --patterns \
     --db rainbow.duckdb
 ```
+
+``--patterns`` also materializes the structural patterns (famous walks,
+sweeps, zig-zags, doublings); ``--knight`` additionally includes
+knight-move skip walks.
 
 Audit a PWDUMP file:
 
@@ -58,6 +92,39 @@ The audit detects PWDUMP versus raw hive automatically by sniffing the
 ```
 keywalk-audit audit SAM --system-hive SYSTEM --db rainbow.duckdb
 ```
+
+Write the report in several formats at once, or render it on the console:
+
+```
+keywalk-audit audit users.pwdump --db rainbow.duckdb --output report --format all
+keywalk-audit audit users.pwdump --db rainbow.duckdb --format console
+```
+
+Generate a walk wordlist, and crack unmatched hashes with hashcat seeded by
+the rainbow candidates and the walk-mutation rules:
+
+```
+keywalk-audit generate --layout qwerty_us --lengths 4-8 --patterns --output walks.txt
+keywalk-audit crack users.pwdump --db rainbow.duckdb --algorithm ntlm --mutate
+```
+
+## Commands
+
+| command | purpose |
+|---------|---------|
+| `score` | calibrated six-feature walk score for a string |
+| `analyze` | deep analysis (physical/finger/repeat metrics, layout ID) |
+| `fingerprint` | geometric fingerprint of a walk's physical path |
+| `fuzzy` | fuzzy lookup against the saved LSH indexes |
+| `layouts` | list registered keyboard layouts |
+| `algorithms` | list the hash-algorithm registry |
+| `generate` | emit walks (and mutations) as a wordlist |
+| `build-rainbow` | build/rebuild the rainbow table |
+| `audit` | audit a SAM dump and write a report |
+| `crack` | hashcat-crack unmatched hashes, rainbow-seeded |
+| `mutations` | inspect mutation rules, masks, and sample expansions |
+| `decode-cisco7` / `encode-cisco7` | Cisco IOS Type-7 codec |
+| `render` | re-render a saved JSON report into another format |
 
 ## Architecture
 
@@ -77,7 +144,12 @@ See ``docs/ARCHITECTURE.md`` for module-level detail, ``docs/SCORING.md``
 for the scoring formulas (with LaTeX), ``docs/FUZZY_HASHING.md`` for the
 MinHash/LSH math and the calibrated 1-gram + 2-gram shingling decision,
 and ``docs/HASH_MODES.md`` for the hashcat-mode registry, including the
-Cisco-type-5 reuse note and the Cisco-type-7 caveat.
+Cisco-type-5 reuse note and the Cisco-type-7 decoder. Further detail lives
+in ``docs/LAYOUTS.md`` (the two-layer geometric model and the nine
+layouts), ``docs/PATTERNS.md`` (structural walk generators),
+``docs/ANALYSIS.md`` (deep analysis and layout identification),
+``docs/MUTATIONS.md`` (the mutation engine and audit-time cracking), and
+``docs/REPORTING.md`` (the output formats).
 
 ## Acceptance criteria (verified)
 

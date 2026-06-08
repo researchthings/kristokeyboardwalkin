@@ -26,6 +26,7 @@ from keywalk_audit.hashing.computer import can_compute, compute_hash
 from keywalk_audit.rainbow.schema import drop_schema, init_schema, walk_id_for
 from keywalk_audit.walks.fingerprint import geometric_fingerprint
 from keywalk_audit.walks.generator import generate_walks_long, generate_walks_short
+from keywalk_audit.walks.patterns import generate_pattern_walks
 from keywalk_audit.walks.scorer import score_walk
 from keywalk_audit.walks.variants import reversal, shift_mirror
 
@@ -84,6 +85,8 @@ def _stream_candidates(
     max_turns: int,
     max_segments: int,
     long_seed_cap: int,
+    include_patterns: bool = False,
+    pattern_knight: bool = False,
 ) -> Iterator[_CandidateRow]:
     if not lengths:
         return
@@ -126,6 +129,20 @@ def _stream_candidates(
             if row is not None:
                 yield row
         short_seeds.append(short)
+
+    if include_patterns:
+        for pattern in generate_pattern_walks(
+            layout, min_len=min_len, max_len=max_len, include_knight=pattern_knight
+        ):
+            for text, mirror, rev in (
+                (pattern, False, False),
+                (shift_mirror(pattern, layout), True, False),
+                (reversal(pattern), False, True),
+                (shift_mirror(reversal(pattern), layout), True, True),
+            ):
+                row = _yield(text, mirror, rev, is_composed=False)
+                if row is not None:
+                    yield row
 
     if not short_seeds or max_segments < 2:
         return
@@ -195,6 +212,8 @@ def build_rainbow(
     max_turns: int = DEFAULT_MAX_TURNS,
     max_segments: int = DEFAULT_MAX_SEGMENTS,
     long_seed_cap: int = DEFAULT_LONG_SEED_CAP,
+    include_patterns: bool = False,
+    pattern_knight: bool = False,
 ) -> RainbowBuildReport:
     """Build (or rebuild) the rainbow table at `db_path`.
 
@@ -241,6 +260,8 @@ def build_rainbow(
                     max_turns=max_turns,
                     max_segments=max_segments,
                     long_seed_cap=long_seed_cap,
+                    include_patterns=include_patterns,
+                    pattern_knight=pattern_knight,
                 ):
                     fingerprints.add(row.fingerprint)
                     geom_idx.add(row.walk_id, row.plaintext, layout)

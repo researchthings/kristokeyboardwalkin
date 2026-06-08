@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from types import MappingProxyType
 
-from keywalk_audit.layouts.base import Layout
+from keywalk_audit.layouts.base import LEFT_PINKY, RIGHT_PINKY, Layout
+from keywalk_audit.layouts.qwerty_us import QWERTY_FINGERS, ROW_STAGGER
 
 _CHAR_TO_POS: dict[str, tuple[int, int]] = {
     "`": (0, 0),
@@ -96,8 +97,16 @@ def _build_shift_map() -> dict[str, str]:
     return {**sym_pairs, **letter_pairs}
 
 
+# UK ISO finger map: the QWERTY family assignment plus the dedicated #/~ key
+# (right pinky, right of the apostrophe) and the \/| key (left pinky, left of
+# Z). The latter overrides the US backslash position, which sits on the right.
+_UK_FINGERS: dict[str, str] = {**QWERTY_FINGERS, "#": RIGHT_PINKY, "\\": LEFT_PINKY}
+
+
 QWERTY_UK: Layout = Layout(
     name="qwerty_uk",
     char_to_pos=MappingProxyType(_CHAR_TO_POS),
     shift_map=MappingProxyType(_build_shift_map()),
+    row_offsets=MappingProxyType(dict(ROW_STAGGER)),
+    finger_map=MappingProxyType(_UK_FINGERS),
 )

@@ -32,8 +32,9 @@ from keywalk_audit.sam.hive_parser import parse_hive
 from keywalk_audit.sam.pwdump_parser import SamEntry, parse_pwdump
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
     from pathlib import Path
+    from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -180,4 +181,35 @@ def audit(
         threshold=threshold,
         runtime_seconds=time.time() - start,
         errors=tuple(errors),
+    )
+
+
+def report_from_dict(data: Mapping[str, Any]) -> AuditReport:
+    """Reconstruct an :class:`AuditReport` from its serialized dict form.
+
+    This is the inverse of the ``dataclasses.asdict`` shape that
+    :func:`keywalk_audit.audit.report.write_json` emits, so a saved JSON report
+    can be reloaded and re-rendered into another format.
+    """
+    findings = tuple(
+        AuditFinding(
+            username=str(f["username"]),
+            rid=int(f["rid"]),
+            matched_algorithm=str(f["matched_algorithm"]),
+            plaintext=str(f["plaintext"]),
+            walk_score=float(f["walk_score"]),
+            layout=str(f["layout"]),
+            fingerprint=str(f["fingerprint"]),
+            fuzzy_geom_cluster=tuple(f.get("fuzzy_geom_cluster", ())),
+            fuzzy_str_cluster=tuple(f.get("fuzzy_str_cluster", ())),
+        )
+        for f in data.get("findings", ())
+    )
+    return AuditReport(
+        total_accounts=int(data["total_accounts"]),
+        walk_accounts=int(data["walk_accounts"]),
+        findings=findings,
+        threshold=float(data["threshold"]),
+        runtime_seconds=float(data["runtime_seconds"]),
+        errors=tuple(data.get("errors", ())),
     )

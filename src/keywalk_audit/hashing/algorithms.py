@@ -65,8 +65,13 @@ HASHCAT_MODES: dict[str, HashAlgo] = {
     "raw_md4": HashAlgo("raw_md4", 900, "generic", True, "Raw MD4"),
     "raw_md5": HashAlgo("raw_md5", 0, "generic", True, "Raw MD5"),
     "raw_sha1": HashAlgo("raw_sha1", 100, "generic", True, "Raw SHA-1"),
+    "raw_sha224": HashAlgo("raw_sha224", 1300, "generic", True, "Raw SHA-224"),
     "raw_sha256": HashAlgo("raw_sha256", 1400, "generic", True, "Raw SHA-256"),
+    "raw_sha384": HashAlgo("raw_sha384", 10800, "generic", True, "Raw SHA-384"),
     "raw_sha512": HashAlgo("raw_sha512", 1700, "generic", True, "Raw SHA-512"),
+    "raw_sha3_256": HashAlgo("raw_sha3_256", 17400, "generic", True, "Raw SHA3-256"),
+    "raw_sha3_512": HashAlgo("raw_sha3_512", 17600, "generic", True, "Raw SHA3-512"),
+    "raw_blake2b": HashAlgo("raw_blake2b", 600, "generic", True, "Raw BLAKE2b-512"),
 }
 
 

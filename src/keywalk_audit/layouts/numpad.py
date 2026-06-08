@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from types import MappingProxyType
 
-from keywalk_audit.layouts.base import Layout
+from keywalk_audit.layouts.base import (
+    RIGHT_INDEX,
+    RIGHT_MIDDLE,
+    RIGHT_RING,
+    THUMB,
+    Layout,
+)
 
 _CHAR_TO_POS: dict[str, tuple[int, int]] = {
     "7": (0, 0),
@@ -25,9 +31,26 @@ _CHAR_TO_POS: dict[str, tuple[int, int]] = {
     ".": (3, 2),
 }
 
+# The numeric keypad is operated by the right hand: index on the left column,
+# middle on the centre column, ring on the right column, thumb on the zero.
+_NUMPAD_FINGERS: dict[str, str] = {
+    "7": RIGHT_INDEX,
+    "4": RIGHT_INDEX,
+    "1": RIGHT_INDEX,
+    "8": RIGHT_MIDDLE,
+    "5": RIGHT_MIDDLE,
+    "2": RIGHT_MIDDLE,
+    "9": RIGHT_RING,
+    "6": RIGHT_RING,
+    "3": RIGHT_RING,
+    ".": RIGHT_RING,
+    "0": THUMB,
+}
+
 
 NUMPAD: Layout = Layout(
     name="numpad",
     char_to_pos=MappingProxyType(_CHAR_TO_POS),
     shift_map=MappingProxyType({}),
+    finger_map=MappingProxyType(_NUMPAD_FINGERS),
 )

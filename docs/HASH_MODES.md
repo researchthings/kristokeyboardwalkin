@@ -1,6 +1,6 @@
 # Hash modes
 
-`keywalk_audit.hashing.algorithms.HASHCAT_MODES` registers 28
+`keywalk_audit.hashing.algorithms.HASHCAT_MODES` registers 33
 hashcat-supported algorithms. Each entry is a `HashAlgo` record with
 the algorithm name, hashcat ``-m`` mode, family, fast / slow flag, and
 a short description.
@@ -35,8 +35,17 @@ a short description.
 | raw_md4 | 900 | generic | yes | Raw MD4 |
 | raw_md5 | 0 | generic | yes | Raw MD5 |
 | raw_sha1 | 100 | generic | yes | Raw SHA-1 |
+| raw_sha224 | 1300 | generic | yes | Raw SHA-224 |
 | raw_sha256 | 1400 | generic | yes | Raw SHA-256 |
+| raw_sha384 | 10800 | generic | yes | Raw SHA-384 |
 | raw_sha512 | 1700 | generic | yes | Raw SHA-512 |
+| raw_sha3_256 | 17400 | generic | yes | Raw SHA3-256 |
+| raw_sha3_512 | 17600 | generic | yes | Raw SHA3-512 |
+| raw_blake2b | 600 | generic | yes | Raw BLAKE2b-512 |
+
+The five generic raw modes below the original SHA-2 entries
+(SHA-224/384, SHA3-256/512, BLAKE2b) were added in v0.2 and all build in
+pure Python.
 
 ## Edge cases
 
@@ -50,16 +59,33 @@ that need to handle Cisco type 5 hashes pass `md5crypt` to hashcat.
 
 Cisco type 7 is reversible obfuscation, not a one-way hash. There is no
 hashcat mode for it because cracking is unnecessary: the password is
-recovered by direct decoding. A separate decoder is the correct tool.
-This registry deliberately excludes `cisco_type7`.
+recovered by direct decoding. This registry deliberately excludes
+`cisco_type7`; the decoder lives in
+`keywalk_audit.hashing.cisco_type7`. It is a Vigenère-style XOR against
+the fixed 53-byte Cisco key, with a leading two-digit seed index:
+
+```
+keywalk-audit decode-cisco7 02050D480809   # -> cisco
+keywalk-audit encode-cisco7 secret --seed 7
+```
+
+`decode(encode(p, s)) == p` for any ASCII `p` and any seed `0 <= s <
+len(KEY)`; malformed ciphertext raises `CiscoType7Error`.
 
 ## Build-time vs audit-time
 
 `keywalk_audit.hashing.computer.compute_hash` provides pure-Python
-implementations for the fast, hashcat-aligned algorithms (NTLM, LM,
-raw MD5/SHA1/SHA256/SHA512). The rainbow builder uses these to
-populate the `hashes` table at build time so that audit-time exact
-lookups are immediate.
+implementations for the fast, hashcat-aligned algorithms (NTLM, LM, and
+the generic raw modes: MD4, MD5, SHA-1, SHA-224/256/384/512,
+SHA3-256/512, BLAKE2b). The rainbow builder uses these to populate the
+`hashes` table at build time so that audit-time exact lookups are
+immediate.
+
+MD4 is implemented from scratch in `keywalk_audit.hashing.md4` because
+OpenSSL 3 drops MD4 from `hashlib`. NTLM is MD4 over the UTF-16LE
+encoding of the password; raw MD4 hashes the UTF-8 bytes. The empty NT
+hash `31d6cfe0d16ae931b73c59d7e0c089c0` equals MD4 of the empty input,
+which cross-validates the implementation.
 
 Slow algorithms (bcrypt, scrypt, sha256crypt, sha512crypt, the Kerberos
 AES variants, PBKDF2 and crypt-family algorithms) are not materialized

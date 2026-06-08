@@ -18,6 +18,8 @@ from collections.abc import Callable
 
 from impacket.ntlm import compute_lmhash, compute_nthash
 
+from keywalk_audit.hashing.md4 import md4_hex
+
 HashFn = Callable[[str], str]
 
 
@@ -33,6 +35,12 @@ def _lm(plaintext: str) -> str:
     return raw.hex()
 
 
+def _md4(plaintext: str) -> str:
+    # OpenSSL 3 drops MD4 from hashlib, so the pure-Python implementation is
+    # used. NTLM is MD4 over UTF-16LE; raw MD4 hashes the UTF-8 bytes directly.
+    return md4_hex(plaintext.encode("utf-8"))
+
+
 def _raw(name: str) -> HashFn:
     def _fn(plaintext: str) -> str:
         return hashlib.new(name, plaintext.encode("utf-8")).hexdigest()
@@ -44,10 +52,16 @@ def _raw(name: str) -> HashFn:
 SUPPORTED: dict[str, HashFn] = {
     "ntlm": _ntlm,
     "lm": _lm,
+    "raw_md4": _md4,
     "raw_md5": _raw("md5"),
     "raw_sha1": _raw("sha1"),
+    "raw_sha224": _raw("sha224"),
     "raw_sha256": _raw("sha256"),
+    "raw_sha384": _raw("sha384"),
     "raw_sha512": _raw("sha512"),
+    "raw_sha3_256": _raw("sha3_256"),
+    "raw_sha3_512": _raw("sha3_512"),
+    "raw_blake2b": _raw("blake2b"),
 }
 
 
