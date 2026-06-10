@@ -1,8 +1,8 @@
 # Walk analysis
 
 `keywalk_audit.walks.analysis.analyze_walk` layers descriptive metrics on
-top of the calibrated six-feature score. The calibrated score is left
-untouched (so acceptance thresholds stay stable); these metrics are for
+top of the calibrated walk score (see `SCORING.md`). The calibrated score is
+left untouched (so acceptance thresholds stay stable); these metrics are for
 triage, reporting, and layout attribution. The `analyze` command emits the
 whole `WalkAnalysis` as JSON, plus a layout ranking.
 

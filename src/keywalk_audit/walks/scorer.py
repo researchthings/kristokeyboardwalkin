@@ -1,7 +1,11 @@
-"""Walk scoring: six features combined into a single 0..1 keyboard-walk score.
+"""Walk scoring: a clamped 0..1 keyboard-walk score from two sub-scores.
 
-Features
---------
+The score recognizes two *kinds* of walk that live in different feature
+subspaces, so it OR-combines an adjacency-driven sub-score with a
+structural sub-score: ``total = clamp(max(adjacency_score, structural_score))``.
+
+Adjacency features (summed with calibrated ``ScoreWeights``)
+------------------------------------------------------------
 1. Adjacency ratio: fraction of consecutive character pairs that are physically
    adjacent on the layout grid.
 2. Longest run: length of the longest contiguous adjacency run, normalized by
@@ -17,7 +21,18 @@ Features
 6. Segment count: the number of contiguous adjacency runs of length >= 4,
    normalized by ``floor(len(p) / 4)``.
 
-The total is a clamped weighted sum.
+Structural sub-score (``StructuralWeights``)
+--------------------------------------------
+7. Periodicity: fraction of the physical-key sequence explained by a repeating
+   base unit (``(n - q) / n`` for the smallest period ``q``), so ``base * k``
+   repetitions score high. Combined with the shift-mirror and direction-entropy
+   features, this flags low-adjacency-but-clearly-structured walks such as
+   ``1a0k1a0k!A)K!A)K`` (number<->letter column jumps, repeated and
+   shift-mirrored) that the adjacency sub-score alone rates near zero.
+
+Because ``total`` is the *max* of the two sub-scores, the structural path can
+only raise a score, never lower one the adjacency path already assigned -- so
+every walk the adjacency model accepts stays accepted.
 """
 
 from __future__ import annotations
@@ -52,6 +67,28 @@ class ScoreWeights:
 
 
 @dataclass(frozen=True)
+class StructuralWeights:
+    """Weights for the structural sub-score (periodicity, shift mirror, low
+    direction entropy).
+
+    These are intentionally NOT part of :class:`ScoreWeights`: the structural
+    sub-score is OR-combined with the adjacency-driven sum (``total`` takes the
+    max of the two) rather than added into it, so it has no reason to share the
+    unit-sum budget and is clamped to ``[0, 1]`` independently. ``shift_mirror``
+    carries the largest weight because it is 1.0 for the entire
+    ``(base * k) + (shift_mirror(base) * k)`` family by construction, which
+    gives the tightest member (``k = 1`` with a short base, where periodicity is
+    only 0.5) margin above the 0.7 acceptance threshold. Random passwords carry
+    no shift mirror and no periodicity, so their structural score stays near the
+    small ``direction_entropy`` contribution.
+    """
+
+    periodicity: float = 0.40
+    shift_mirror: float = 0.50
+    direction_entropy: float = 0.15
+
+
+@dataclass(frozen=True)
 class WalkScore:
     """Result of scoring a candidate walk."""
 
@@ -64,6 +101,8 @@ class WalkScore:
     reversal: float
     segment_count: int
     segment_count_normalized: float
+    periodicity: float
+    structural_score: float
 
 
 def _adjacency_flags(plaintext: str, layout: Layout) -> list[bool]:
@@ -143,13 +182,35 @@ def _reversal_feature(plaintext: str, layout: Layout) -> float:
     return 1.0 if keys == list(reversed(keys)) else 0.0
 
 
+def _periodicity_feature(plaintext: str, layout: Layout) -> float:
+    """Return the fraction of the physical-key sequence explained by repetition.
+
+    Finds the smallest period ``q`` (``1 <= q <= n // 2``) for which the
+    physical-key sequence repeats, and returns ``(n - q) / n`` -- the fraction
+    of the string covered by repeats of the base unit. A walk formed as
+    ``base * k`` for any ``k >= 2`` is fully periodic and scores high; an
+    aperiodic string scores 0. Operating on *physical* keys means a shift mirror
+    such as ``1a0k!A)K`` (keys ``1a0k1a0k``) is recognized as periodic.
+    """
+    keys = [layout.physical_key(c) for c in plaintext]
+    n = len(keys)
+    if n < 2:
+        return 0.0
+    for q in range(1, n // 2 + 1):
+        if all(keys[i] == keys[i - q] for i in range(q, n)):
+            return (n - q) / n
+    return 0.0
+
+
 DEFAULT_WEIGHTS = ScoreWeights()
+DEFAULT_STRUCTURAL_WEIGHTS = StructuralWeights()
 
 
 def score_walk(
     plaintext: str,
     layout: Layout,
     weights: ScoreWeights = DEFAULT_WEIGHTS,
+    structural_weights: StructuralWeights = DEFAULT_STRUCTURAL_WEIGHTS,
 ) -> WalkScore:
     """Compute the walk score for `plaintext` on `layout`."""
     n = len(plaintext)
@@ -164,6 +225,8 @@ def score_walk(
             reversal=0.0,
             segment_count=0,
             segment_count_normalized=0.0,
+            periodicity=0.0,
+            structural_score=0.0,
         )
 
     flags = _adjacency_flags(plaintext, layout)
@@ -185,7 +248,9 @@ def score_walk(
     segment_max = n // _MIN_SEGMENT_LEN
     segment_count_normalized = min(1.0, segment_count_int / segment_max) if segment_max > 0 else 0.0
 
-    total = (
+    periodicity = _periodicity_feature(plaintext, layout)
+
+    adjacency_total = (
         weights.adjacency_ratio * adjacency_ratio
         + weights.longest_run * longest_run_normalized
         + weights.direction_entropy * direction_entropy
@@ -193,7 +258,13 @@ def score_walk(
         + weights.reversal * rev
         + weights.segment_count * segment_count_normalized
     )
-    total = max(0.0, min(1.0, total))
+    structural_score = min(
+        1.0,
+        structural_weights.periodicity * periodicity
+        + structural_weights.shift_mirror * mirror
+        + structural_weights.direction_entropy * direction_entropy,
+    )
+    total = max(0.0, min(1.0, max(adjacency_total, structural_score)))
 
     return WalkScore(
         total=total,
@@ -205,4 +276,6 @@ def score_walk(
         reversal=rev,
         segment_count=segment_count_int,
         segment_count_normalized=segment_count_normalized,
+        periodicity=periodicity,
+        structural_score=structural_score,
     )

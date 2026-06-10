@@ -184,6 +184,12 @@ def main(verbose: bool) -> None:
     is_flag=True,
     help="Include knight-move skip walks (implies --patterns; can be large).",
 )
+@click.option(
+    "--shift-doublings",
+    "shift_doublings",
+    is_flag=True,
+    help="Include (base*k)+(shift(base)*k) compounds, e.g. 1a0k1a0k!A)K!A)K (implies --patterns).",
+)
 def cli_build_rainbow(
     rebuild: bool,
     layouts_raw: str | None,
@@ -197,6 +203,7 @@ def cli_build_rainbow(
     long_seed_cap: int,
     patterns: bool,
     knight: bool,
+    shift_doublings: bool,
 ) -> None:
     """Build (or rebuild) the rainbow table."""
     layouts = _resolve_layouts(layouts_raw)
@@ -212,8 +219,9 @@ def cli_build_rainbow(
         max_turns=max_turns,
         max_segments=max_segments,
         long_seed_cap=long_seed_cap,
-        include_patterns=patterns or knight,
+        include_patterns=patterns or knight or shift_doublings,
         pattern_knight=knight,
+        include_shift_doublings=shift_doublings,
     )
     click.echo(
         json.dumps(
@@ -328,6 +336,8 @@ def cli_score(text: str, layout_name: str) -> None:
                 "reversal": result.reversal,
                 "segment_count": result.segment_count,
                 "segment_count_normalized": round(result.segment_count_normalized, 4),
+                "periodicity": round(result.periodicity, 4),
+                "structural_score": round(result.structural_score, 4),
             },
             indent=2,
         )
@@ -454,15 +464,20 @@ def _generate_walks(
     max_turns: int,
     patterns: bool,
     knight: bool,
+    shift_doublings: bool,
 ) -> Iterable[str]:
     seen: dict[str, None] = {}
     for walk in generate_walks_short(
         layout, min_len=min(lengths), max_len=max(lengths), max_turns=max_turns
     ):
         seen.setdefault(walk, None)
-    if patterns or knight:
+    if patterns or knight or shift_doublings:
         for walk in generate_pattern_walks(
-            layout, min_len=min(lengths), max_len=max(lengths), include_knight=knight
+            layout,
+            min_len=min(lengths),
+            max_len=max(lengths),
+            include_knight=knight,
+            include_shift_doublings=shift_doublings,
         ):
             seen.setdefault(walk, None)
     return seen.keys()
@@ -474,6 +489,12 @@ def _generate_walks(
 @click.option("--max-turns", type=int, default=2, show_default=True)
 @click.option("--patterns", is_flag=True, help="Include structural patterns.")
 @click.option("--knight", is_flag=True, help="Include knight-move skip walks.")
+@click.option(
+    "--shift-doublings",
+    "shift_doublings",
+    is_flag=True,
+    help="Include (base*k)+(shift(base)*k) compounds, e.g. 1a0k1a0k!A)K!A)K.",
+)
 @click.option("--min-score", type=float, default=0.0, show_default=True, help="Score filter.")
 @click.option("--mutate", is_flag=True, help="Expand each walk with mutation derivatives.")
 @click.option("--limit", type=int, default=None, help="Cap the number of emitted walks.")
@@ -489,6 +510,7 @@ def cli_generate(
     max_turns: int,
     patterns: bool,
     knight: bool,
+    shift_doublings: bool,
     min_score: float,
     mutate: bool,
     limit: int | None,
@@ -498,7 +520,7 @@ def cli_generate(
     layout = get_layout(layout_name)
     length_range = _parse_lengths(lengths)
     result: dict[str, None] = {}
-    for walk in _generate_walks(layout, length_range, max_turns, patterns, knight):
+    for walk in _generate_walks(layout, length_range, max_turns, patterns, knight, shift_doublings):
         if min_score > 0.0 and score_walk(walk, layout).total < min_score:
             continue
         if mutate:
