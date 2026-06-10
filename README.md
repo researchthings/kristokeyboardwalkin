@@ -7,7 +7,8 @@ telephone keypad — scoring each candidate, fingerprinting its physical
 path, and clustering variants and near-miss mutations via geometric and
 string MinHash locality-sensitive hashing. It builds a persistent rainbow
 table of walk candidates with their hashes (optionally seeded with
-structural patterns: famous walks, sweeps, zig-zags, and doublings), audits
+structural patterns: famous walks, sweeps, zig-zags, number↔letter
+interleaves, doublings, and shift-doubled compounds), audits
 SAM dumps (PWDUMP or raw hive) for accounts using walk passwords, and can
 hand unmatched hashes to hashcat with a walk-aware mutation rule set.
 
@@ -76,8 +77,10 @@ keywalk-audit build-rainbow \
 ```
 
 ``--patterns`` also materializes the structural patterns (famous walks,
-sweeps, zig-zags, doublings); ``--knight`` additionally includes
-knight-move skip walks.
+sweeps, zig-zags, number↔letter interleaves, doublings). ``--shift-doublings``
+adds the ``(base*k)+(shift(base)*k)`` compound family (e.g.
+``1a0k1a0k!A)K!A)K``) and ``--knight`` adds knight-move skip walks; both imply
+``--patterns``.
 
 Audit a PWDUMP file:
 
@@ -112,7 +115,7 @@ keywalk-audit crack users.pwdump --db rainbow.duckdb --algorithm ntlm --mutate
 
 | command | purpose |
 |---------|---------|
-| `score` | calibrated six-feature walk score for a string |
+| `score` | calibrated walk score (adjacency + structural sub-scores) for a string |
 | `analyze` | deep analysis (physical/finger/repeat metrics, layout ID) |
 | `fingerprint` | geometric fingerprint of a walk's physical path |
 | `fuzzy` | fuzzy lookup against the saved LSH indexes |

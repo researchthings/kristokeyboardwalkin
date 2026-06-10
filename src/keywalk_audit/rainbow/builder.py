@@ -87,6 +87,7 @@ def _stream_candidates(
     long_seed_cap: int,
     include_patterns: bool = False,
     pattern_knight: bool = False,
+    include_shift_doublings: bool = False,
 ) -> Iterator[_CandidateRow]:
     if not lengths:
         return
@@ -132,7 +133,11 @@ def _stream_candidates(
 
     if include_patterns:
         for pattern in generate_pattern_walks(
-            layout, min_len=min_len, max_len=max_len, include_knight=pattern_knight
+            layout,
+            min_len=min_len,
+            max_len=max_len,
+            include_knight=pattern_knight,
+            include_shift_doublings=include_shift_doublings,
         ):
             for text, mirror, rev in (
                 (pattern, False, False),
@@ -214,6 +219,7 @@ def build_rainbow(
     long_seed_cap: int = DEFAULT_LONG_SEED_CAP,
     include_patterns: bool = False,
     pattern_knight: bool = False,
+    include_shift_doublings: bool = False,
 ) -> RainbowBuildReport:
     """Build (or rebuild) the rainbow table at `db_path`.
 
@@ -262,6 +268,7 @@ def build_rainbow(
                     long_seed_cap=long_seed_cap,
                     include_patterns=include_patterns,
                     pattern_knight=pattern_knight,
+                    include_shift_doublings=include_shift_doublings,
                 ):
                     fingerprints.add(row.fingerprint)
                     geom_idx.add(row.walk_id, row.plaintext, layout)

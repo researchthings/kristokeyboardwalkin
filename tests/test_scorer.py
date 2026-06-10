@@ -18,6 +18,18 @@ if TYPE_CHECKING:
 CANONICAL_THRESHOLD = 0.7
 RANDOM_MAX = 0.5
 
+# Shift-doubled compounds: (base * k) + (shift_mirror(base) * k). These carry
+# near-zero key adjacency, so they are recognized via the structural sub-score.
+# The last entry is the tightest case (k=1, base length 4).
+SHIFT_DOUBLED_WALKS: tuple[str, ...] = (
+    "1a0k1a0k!A)K!A)K",
+    "3d9j3d9j#D(J#D(J",
+    "2x9n2x9n@X(N@X(N",
+    "1a2s3d4f!A@S#D$F",
+    "0k9j8h7g)K(J*H&G",
+    "1a0k!A)K",
+)
+
 
 def test_default_weights_sum_to_one() -> None:
     w = ScoreWeights()
@@ -115,3 +127,37 @@ def test_adjacency_ratio_one_for_known_walks(qwerty_us: Layout) -> None:
     for walk in ("1qaz", "qwerty", "asdfgh", "zxcvbnm", "1qazxsw2", "qaz"):
         result = score_walk(walk, qwerty_us)
         assert result.adjacency_ratio == 1.0, f"{walk!r}: {result.adjacency_ratio}"
+
+
+def test_shift_doubled_walks_above_threshold(qwerty_us: Layout) -> None:
+    """Every (base*k)+(shift(base)*k) compound must clear the audit threshold."""
+    for walk in SHIFT_DOUBLED_WALKS:
+        result = score_walk(walk, qwerty_us)
+        assert result.total >= CANONICAL_THRESHOLD, (
+            f"{walk!r} scored {result.total:.3f}; expected >= {CANONICAL_THRESHOLD}"
+        )
+
+
+def test_periodicity_feature(qwerty_us: Layout) -> None:
+    # Aperiodic composed walk -> 0; repeated-base compound -> > 0.
+    assert score_walk("1qaz2wsx3edc4rfv", qwerty_us).periodicity == 0.0
+    assert score_walk("1a0k1a0k!A)K!A)K", qwerty_us).periodicity > 0.0
+
+
+def test_structural_path_carries_zero_adjacency_walk(qwerty_us: Layout) -> None:
+    """A zero-adjacency compound is flagged purely by the structural sub-score."""
+    result = score_walk("1a0k1a0k!A)K!A)K", qwerty_us)
+    assert result.adjacency_ratio == 0.0
+    assert result.structural_score >= CANONICAL_THRESHOLD
+    assert result.total == result.structural_score
+
+
+def test_random_structural_score_below_floor(
+    qwerty_us: Layout, random_passwords: Sequence[str]
+) -> None:
+    """The single recalibration obligation: random structural scores stay low."""
+    for pw in random_passwords:
+        result = score_walk(pw, qwerty_us)
+        assert result.structural_score < RANDOM_MAX, (
+            f"{pw!r} structural={result.structural_score:.3f}; expected < {RANDOM_MAX}"
+        )

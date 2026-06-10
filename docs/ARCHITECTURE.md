@@ -18,8 +18,10 @@ against the rainbow.
 - `keywalk_audit.walks` contains:
   - `variants.py` derives the shift mirror, character reversal, and the
     full variant set of a plaintext.
-  - `scorer.py` computes the six-feature walk score with calibrated
-    weights.
+  - `scorer.py` computes the walk score: an adjacency-driven six-feature
+    weighted sum OR-combined (max) with a structural sub-score (periodicity,
+    shift mirror, low direction entropy) that flags low-adjacency but regular
+    walks such as `1a0k1a0k!A)K!A)K`. See `SCORING.md`.
   - `fingerprint.py` computes a BLAKE2b-128 hex digest over the unit-
     clipped direction-vector sequence. Shift mirrors and the original
     plaintext share the same physical-key path and therefore the same
@@ -27,7 +29,8 @@ against the rainbow.
   - `generator.py` provides a streaming DFS short-walk generator and a
     long-walk composer that concatenates 2..max_segments shorts.
   - `patterns.py` adds structural generators (famous walks, row/column
-    sweeps, zig-zags, doublings, opt-in knight moves); see `PATTERNS.md`.
+    sweeps, zig-zags, number↔letter interleaves, doublings, opt-in
+    shift-doubled compounds and knight moves); see `PATTERNS.md`.
   - `analysis.py` adds descriptive metrics (physical travel, hand/finger
     dynamics, repeats, layout identification, walk guessability) on top of
     the calibrated score; see `ANALYSIS.md`.
